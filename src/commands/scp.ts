@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import io from 'socket.io-client';
 import fs from 'fs';
 import path from 'path';
+import cliProgress from 'cli-progress';
 import { api, appConfig } from '../api';
 import { login } from './auth';
 import { fetchServers } from './list';
@@ -47,7 +48,7 @@ async function setupConnection(server: any) {
 
     // 2. Connect Socket
     const socket = io('https://api.sshbridge.csiq.io', {
-        query: { EIO: 4, transport: 'websocket' },
+        query: { EIO: 4, transport: 'websocket', sessionId: sessionId },
         transports: ['websocket'],
         path: '/socket.io/',
         extraHeaders: {
@@ -103,37 +104,63 @@ export async function downloadFile(serverName: string, remotePath: string, local
 
     try {
         const socket = await setupConnection(server);
+
+        socket.on('error', (err: any) => {
+            console.error(chalk.red(`\nSocket Error: ${err.message || err}`));
+        });
+        
         console.log(chalk.cyan(`Downloading ${remotePath} from ${server.name}...`));
 
         const fileStream = fs.createWriteStream(destination);
         let downloadedBytes = 0;
-        let totalBytes = 0; // Might not be available in chunks if 'download-progress' not sent immediately
+        let totalBytes = 0; 
+        let transferStarted = false;
 
-        socket.emit('scp-download', { path: remotePath });
+        const progressBar = new cliProgress.SingleBar({
+            format: 'Progress |' + chalk.cyan('{bar}') + '| {percentage}% || {value}/{total} KB',
+            barCompleteChar: '\u2588',
+            barIncompleteChar: '\u2591',
+            hideCursor: true,
+            stopOnComplete: true
+        });
+
+        console.log(chalk.gray(`Requesting file ${remotePath}...`));
+        
+        // Wait for SSH ready (indicated by first output) before sending scp-download request
+        socket.once('output', () => {
+             console.log(chalk.gray('Connection established. Sending download request...'));
+             socket.emit('scp-download', { path: remotePath });
+        });
 
         socket.on('scp-download-result', (data: any) => {
             // Single shot download
             if (data.error) {
                 console.error(chalk.red(`\nDownload failed: ${data.error}`));
                 fileStream.close();
-                fs.unlinkSync(destination);
+                if (fs.existsSync(destination)) fs.unlinkSync(destination);
                 socket.disconnect();
                 process.exit(1);
             }
             
             // Should be buffer or similar
             if (data.content) {
-                 // content might be an ArrayBuffer or Buffer depending on client deserialization
                  const buffer = Buffer.from(data.content);
                  fileStream.write(buffer);
                  fileStream.end();
+                 progressBar.stop();
                  console.log(chalk.green(`\nDownload complete: ${destination}`));
                  socket.disconnect();
             }
         });
 
         socket.on('scp-download-chunk', (data: any) => {
+            if (!transferStarted) {
+                transferStarted = true;
+                console.log(chalk.gray('Transfer started...'));
+            }
+
             if (data.error) {
+                 progressBar.stop();
                  console.error(chalk.red(`\nError: ${data.error}`));
                  socket.disconnect();
                  return;
@@ -143,28 +170,34 @@ export async function downloadFile(serverName: string, remotePath: string, local
                 const buffer = Buffer.from(data.chunk);
                 fileStream.write(buffer);
                 downloadedBytes += buffer.length;
-                process.stdout.write(`\rDownloaded: ${(downloadedBytes / 1024).toFixed(2)} KB`);
+                
+                if (totalBytes > 0) {
+                    progressBar.update(Math.round(downloadedBytes / 1024));
+                } else {
+                    process.stdout.write(`\rDownloaded: ${(downloadedBytes / 1024).toFixed(2)} KB`);
+                }
             }
 
             if (data.isLast) {
                 fileStream.end();
+                progressBar.stop();
                 console.log(chalk.green(`\nDownload complete: ${destination}`));
                 socket.disconnect();
             }
         });
 
         socket.on('download-progress', (data: any) => {
-            // Optional: better progress bar
              if (data.totalSize) {
-                 totalBytes = data.totalSize;
-                 const percent = ((data.downloaded / totalBytes) * 100).toFixed(1);
-                 process.stdout.write(`\rProgress: ${percent}% (${(data.downloaded/1024).toFixed(1)} KB / ${(totalBytes/1024).toFixed(1)} KB)`);
+                 if (totalBytes === 0) {
+                     totalBytes = data.totalSize;
+                     progressBar.start(Math.round(totalBytes / 1024), 0);
+                 }
+                 progressBar.update(Math.round(data.downloaded / 1024));
              }
         });
         
-        // Handle socket disconnect/errors in case of server side issues
         socket.on('disconnect', () => { 
-             // Determine if we finished cleanly?
+             progressBar.stop();
         });
 
     } catch (error: any) {
@@ -211,55 +244,70 @@ export async function uploadFile(serverName: string, localPath: string, remotePa
         const socket = await setupConnection(server);
         console.log(chalk.cyan(`Uploading ${localPath} to ${server.name}:${targetName}...`));
 
+        const progressBar = new cliProgress.SingleBar({
+            format: 'Progress |' + chalk.cyan('{bar}') + '| {percentage}% || {value}/{total} KB',
+            barCompleteChar: '\u2588',
+            barIncompleteChar: '\u2591',
+            hideCursor: true
+        });
+
+        // Wait for SSH ready before starting upload
+        socket.once('output', () => {
+            console.log(chalk.gray('Connection established. Starting upload...'));
+            progressBar.start(Math.round(fileSize / 1024), 0);
+            startUpload();
+        });
+
         const fd = fs.openSync(localPath, 'r');
         let offset = 0;
         let chunkIndex = 0;
         const buffer = Buffer.alloc(CHUNK_SIZE);
 
-        const uploadNextChunk = () => {
-            const bytesRead = fs.readSync(fd, buffer, 0, CHUNK_SIZE, offset);
-            
-            if (bytesRead === 0) {
-                 fs.closeSync(fd);
-                 console.log(chalk.green('\nUpload complete.'));
-                 socket.disconnect();
-                 return;
-            }
-
-            const chunk = buffer.subarray(0, bytesRead);
-            const isLast = (offset + bytesRead) >= fileSize;
-
-            const payload = {
-                fileName: targetName,
-                chunk: chunk, // Socket.io handles Buffer -> ArrayBuffer/binary
-                offset: offset,
-                isLast: isLast,
-                chunkIndex: chunkIndex
+        const startUpload = () => {
+            const uploadNextChunk = () => {
+                const bytesRead = fs.readSync(fd, buffer, 0, CHUNK_SIZE, offset);
+                
+                if (bytesRead === 0) {
+                     fs.closeSync(fd);
+                     progressBar.stop();
+                     console.log(chalk.green('\nUpload complete.'));
+                     socket.disconnect();
+                     return;
+                }
+    
+                const chunk = buffer.subarray(0, bytesRead);
+                const isLast = (offset + bytesRead) >= fileSize;
+    
+                const payload = {
+                    fileName: targetName,
+                    chunk: chunk, // Socket.io handles Buffer -> ArrayBuffer/binary
+                    offset: offset,
+                    isLast: isLast,
+                    chunkIndex: chunkIndex
+                };
+    
+                socket.emit('scp-upload-chunk', payload);
+                
+                offset += bytesRead;
+                chunkIndex++;
+                
+                progressBar.update(Math.round(offset / 1024));
+    
+                if (!isLast) {
+                    setImmediate(uploadNextChunk);
+                } else {
+                     fs.closeSync(fd);
+                     progressBar.stop();
+                     console.log(chalk.green('\nUpload complete.'));
+                     // Wait a sec for server to process write?
+                     setTimeout(() => socket.disconnect(), 1000);
+                }
             };
-
-            socket.emit('scp-upload-chunk', payload);
-            
-            offset += bytesRead;
-            chunkIndex++;
-            process.stdout.write(`\rUploaded: ${((offset / fileSize) * 100).toFixed(1)}%`);
-
-            if (!isLast) {
-                // To avoid flooding, we can wait a tick or just blast it.
-                // Ideal is to wait for confirmation, but browser agent implied 'upload-progress' comes from server.
-                // We can use that as 'ack'. 
-                // Or just setImmediate to yield loop.
-                setImmediate(uploadNextChunk);
-            } else {
-                 fs.closeSync(fd);
-                 console.log(chalk.green('\nUpload complete.'));
-                 // Wait a sec for server to process write?
-                 setTimeout(() => socket.disconnect(), 1000);
-            }
+            uploadNextChunk();
         };
         
         // Listen for progress to ensure flow control? 
         // Or simply start uploading.
-        uploadNextChunk();
         
         socket.on('upload-progress', (data: any) => {
              // We can use this to sync if needed.

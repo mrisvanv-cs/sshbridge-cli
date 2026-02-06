@@ -1,6 +1,6 @@
 {
   "name": "sshbridge-cli",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "A terminal-based SSH connection manager with a beautiful TUI interface",
   "main": "dist/index.js",
   "bin": {
@@ -13,7 +13,13 @@
     "postinstall": "node scripts/postinstall.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["ssh", "cli", "terminal", "tui", "connection-manager"],
+  "keywords": [
+    "ssh",
+    "cli",
+    "terminal",
+    "tui",
+    "connection-manager"
+  ],
   "author": "",
   "license": "ISC",
   "repository": {
@@ -25,6 +31,7 @@
     "axios": "^1.13.4",
     "blessed": "^0.1.81",
     "chalk": "^4.1.2",
+    "cli-progress": "^3.12.0",
     "commander": "^14.0.2",
     "conf": "^9.0.2",
     "inquirer": "^8.2.7",
@@ -33,6 +40,7 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
     "@types/inquirer": "^9.0.9",
     "@types/inquirer-autocomplete-prompt": "^3.0.3",
     "@types/node": "^25.1.0",
