@@ -7,7 +7,7 @@ export async function update() {
     console.log(chalk.cyan('Checking for updates...'));
     
     try {
-        const { data } = await axios.get('https://raw.githubusercontent.com/mrisvanv-cs/sshbridge-cli/main/package.json', {
+        const { data } = await axios.get(`https://raw.githubusercontent.com/mrisvanv-cs/sshbridge-cli/main/package.json?t=${Date.now()}`, {
             timeout: 5000
         });
 

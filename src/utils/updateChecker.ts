@@ -18,7 +18,7 @@ export async function checkForUpdate(currentVersion: string) {
   // Actually, user wants to see it. I'll make it always check but with a short timeout so it doesn't hang.
   
   try {
-    const { data } = await axios.get('https://raw.githubusercontent.com/mrisvanv-cs/sshbridge-cli/main/package.json', {
+    const { data } = await axios.get(`https://raw.githubusercontent.com/mrisvanv-cs/sshbridge-cli/main/package.json?t=${Date.now()}`, {
       timeout: 1500 // Don't wait too long
     });
 
