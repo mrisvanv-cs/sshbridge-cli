@@ -9,6 +9,7 @@ import { list } from './commands/list';
 
 import { downloadFile, uploadFile } from './commands/scp';
 import { update } from './commands/update';
+import { uninstall } from './commands/uninstall';
 
 import { checkForUpdate } from './utils/updateChecker';
 const pkg = require('../package.json'); // Using require for reliability with structure
@@ -52,6 +53,10 @@ const pkg = require('../package.json'); // Using require for reliability with st
     program.command('update')
       .description('Update SSHBridge CLI to the latest version')
       .action(async () => { await update(); });
+
+    program.command('uninstall')
+      .description('Completely remove SSHBridge CLI')
+      .action(async () => { await uninstall(); });
 
     program.command('list')
       .description('List available servers')
