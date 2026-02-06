@@ -1,5 +1,6 @@
 import axios from 'axios';
 import chalk from 'chalk';
+import inquirer from 'inquirer';
 import io from 'socket.io-client';
 import { api, appConfig } from '../api';
 import { login, verifyPassword } from './auth';
@@ -16,6 +17,22 @@ export async function connectToServer(server: any, role: string = 'user') {
     if (server.name.toUpperCase().includes('PROD')) {
         const verified = await verifyPassword();
         if (!verified) {
+            return;
+        }
+
+        // Additional Production Safety Check
+        console.log(chalk.red.bold('\n🛑 CRITICAL WARNING: YOU ARE CONNECTING TO A PRODUCTION SERVER 🛑'));
+        console.log(chalk.red(`Server: ${server.name} (${server.ip})`));
+        console.log(chalk.yellow(`To confirm, please type "confirm ${server.name}" exactly:`));
+
+        const { confirmation } = await inquirer.prompt([{
+            type: 'input',
+            name: 'confirmation',
+            message: 'Confirmation:'
+        }]);
+
+        if (confirmation !== `confirm ${server.name}`) {
+            console.log(chalk.red('❌ conformation failed. Connection aborted.'));
             return;
         }
     }

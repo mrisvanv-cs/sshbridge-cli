@@ -27,11 +27,12 @@ const pkg = require('../package.json'); // Using require for reliability with st
       .description('CLI to connect to SSHBridge servers')
       .version('1.0.0', '-v, --version')
       .option('-u, --ui', 'Launch TUI dashboard mode')
+      .option('--with-prod', 'Include production servers')
       .action(async (options) => {
            if (options.ui) {
                await startDashboard();
            } else {
-               await startWizard();
+               await startWizard(options);
            }
       });
 
@@ -49,6 +50,7 @@ const pkg = require('../package.json'); // Using require for reliability with st
 
     program.command('list')
       .description('List available servers')
+      .option('--with-prod', 'Include production servers')
       .action(list);
 
     program.command('connect <serverName>')

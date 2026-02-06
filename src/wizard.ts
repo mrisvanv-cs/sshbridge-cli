@@ -10,7 +10,7 @@ import { connectToServer } from './commands/connect';
 // Register autocomplete prompt
 inquirer.registerPrompt('autocomplete', autocomplete);
 
-export async function startWizard() {
+export async function startWizard(options: any = {}) {
     console.clear();
     console.log(chalk.bold.magenta(`
    _____ _____ _    _ ____  _____  _____ _____   _____ ______ 
@@ -35,8 +35,15 @@ export async function startWizard() {
     let servers;
     try {
         servers = await fetchServers();
+        // Filter PROD servers unless requested
+        if (!options.withProd) {
+            servers = servers.filter((s: any) => !s.name.toUpperCase().includes('PROD'));
+        } else {
+             console.log(chalk.red.bold('⚠️  PROD SERVERS INCLUDED ⚠️'));
+        }
+
         if (!servers || servers.length === 0) {
-            console.log(chalk.yellow('No servers available.'));
+            console.log(chalk.yellow('No servers available (PROD hidden).'));
             return;
         }
 

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import chalk from 'chalk';
+import inquirer from 'inquirer';
 import { api, appConfig } from '../api';
 import { login } from './auth';
 
@@ -37,7 +38,7 @@ export async function fetchGroups() {
     }
 }
 
-export async function list() {
+export async function list(options: any = {}) {
     const token = appConfig.get('token');
     if (!token) {
         console.log(chalk.yellow('Not authenticated.'));
@@ -48,13 +49,35 @@ export async function list() {
     try {
         const servers = await fetchServers();
 
-        if (servers.length === 0) {
+        let filteredServers = servers;
+
+        if (!options.withProd) {
+            filteredServers = servers.filter((s: any) => !s.name.toUpperCase().includes('PROD'));
+        } else {
+             // Production safeguard for listing
+             console.log(chalk.red.bold('\n⚠️  DANGER: YOU ARE ABOUT TO LIST PRODUCTION SERVERS ⚠️'));
+             console.log(chalk.red('This action is restricted. AI agents should NOT freely access this list without explicit user approval.'));
+             console.log(chalk.yellow('To confirm, please type "confirm" below:'));
+
+             const { validation } = await inquirer.prompt([{
+                 type: 'input',
+                 name: 'validation',
+                 message: 'Confirmation:'
+             }]);
+
+             if (validation !== 'confirm') {
+                 console.log(chalk.red('❌ Confirmation failed. Aborting.'));
+                 return;
+             }
+        }
+
+        if (filteredServers.length === 0) {
             console.log(chalk.yellow('No servers found.'));
             return;
         }
 
-        console.log(chalk.cyan(`Found ${servers.length} servers:`));
-        console.table(servers.map((s: any) => ({
+        console.log(chalk.cyan(`Found ${filteredServers.length} servers:`));
+        console.table(filteredServers.map((s: any) => ({
             ID: s._id || s.id || 'N/A',
             Name: s.name,
             Hostname: s.ip,
