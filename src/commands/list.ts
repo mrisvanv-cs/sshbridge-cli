@@ -39,6 +39,9 @@ export async function fetchGroups() {
 }
 
 export async function list(options: any = {}) {
+    // Debug info to troubleshoot flag parsing
+    // console.log('DEBUG: list options:', JSON.stringify(options));
+    
     const token = appConfig.get('token');
     if (!token) {
         console.log(chalk.yellow('Not authenticated.'));
@@ -50,9 +53,13 @@ export async function list(options: any = {}) {
         const servers = await fetchServers();
 
         let filteredServers = servers;
+        const showProd = options.withProd === true;
 
-        if (!options.withProd) {
-            filteredServers = servers.filter((s: any) => !s.name.toUpperCase().includes('PROD'));
+        if (!showProd) {
+            filteredServers = servers.filter((s: any) => {
+                const name = (s.name || '').toUpperCase();
+                return !name.includes('PROD') && !name.includes('PRODUCTION');
+            });
         } else {
              // Production safeguard for listing
              console.log(chalk.red.bold('\n⚠️  DANGER: YOU ARE ABOUT TO LIST PRODUCTION SERVERS ⚠️'));
@@ -91,7 +98,7 @@ export async function list(options: any = {}) {
             const success = await login();
             if (success) {
                 // Retry list
-                return list();
+                return list(options);
             }
         } else {
             console.error(chalk.red(`Failed to list servers: ${error.message}`));

@@ -51,22 +51,22 @@ const pkg = require('../package.json'); // Using require for reliability with st
     program.command('list')
       .description('List available servers')
       .option('--with-prod', 'Include production servers')
-      .action(list);
+      .action((options) => list(options));
 
     program.command('connect <serverName>')
       .description('Connect to a server by name or ID')
-      .action(connect);
+      .action((serverName) => connect(serverName));
 
     program.command('download <serverName> <remotePath> [localPath]')
       .description('Download a file from the server')
-      .action(async (serverName, remotePath, localPath) => {
-          await downloadFile(serverName, remotePath, localPath);
+      .action((serverName, remotePath, localPath) => {
+          downloadFile(serverName, remotePath, localPath);
       });
 
     program.command('upload <serverName> <localPath> [remotePath]')
       .description('Upload a file to the server')
-      .action(async (serverName, localPath, remotePath) => {
-          await uploadFile(serverName, localPath, remotePath);
+      .action((serverName, localPath, remotePath) => {
+          uploadFile(serverName, localPath, remotePath);
       });
 
     await program.parseAsync(process.argv);
