@@ -53,7 +53,7 @@ export async function list(options: any = {}) {
         const servers = await fetchServers();
 
         let filteredServers = servers;
-        const showProd = options.withProd === true;
+        const showProd = !!options.withProd;
 
         if (!showProd) {
             filteredServers = servers.filter((s: any) => {

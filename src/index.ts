@@ -51,7 +51,10 @@ const pkg = require('../package.json'); // Using require for reliability with st
     program.command('list')
       .description('List available servers')
       .option('--with-prod', 'Include production servers')
-      .action((options) => list(options));
+      .action((options, command) => {
+          const mergedOptions = { ...command.parent.opts(), ...options };
+          return list(mergedOptions);
+      });
 
     program.command('connect <serverName>')
       .description('Connect to a server by name or ID')
