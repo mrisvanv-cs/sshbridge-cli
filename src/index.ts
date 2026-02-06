@@ -9,7 +9,18 @@ import { list } from './commands/list';
 
 import { downloadFile, uploadFile } from './commands/scp';
 
+import { checkForUpdate } from './utils/updateChecker';
+const pkg = require('../package.json'); // Using require for reliability with structure
+
 const program = new Command();
+
+program.hook('preAction', async () => {
+    try {
+        await checkForUpdate(pkg.version);
+    } catch (e) {
+        // ignore errors
+    }
+});
 
 program
   .name('sshbridge')
