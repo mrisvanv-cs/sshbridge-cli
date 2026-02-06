@@ -18,6 +18,17 @@ npm -v
 ```
 
 
+## ⚡ Quick Install (Recommended)
+
+If you have `curl` and `npm` installed, you can simply run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mrisvanv-cs/sshbridge-cli/main/install.sh | bash
+```
+
+This will automatically download, build, and install the tool to your `~/.local` directory.
+
+
 ## 📦 Manual Installation (From Package)
 
 If you have the `sshbridge-cli-1.0.0.tgz` file, you can install it manually using NPM:
