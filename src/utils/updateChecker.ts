@@ -5,18 +5,10 @@ import Conf from 'conf';
 const config = new Conf({ projectName: 'sshbridge-cli' });
 const UPDATE_CHECK_INTERVAL = 1000 * 60 * 60; // 1 hour
 
-export async function checkForUpdate(currentVersion: string) {
+export async function checkForUpdate(currentVersion: string): Promise<{latestVersion: string, currentVersion: string} | null> {
   const lastCheck = config.get('lastUpdateCheck') as number;
   const now = Date.now();
 
-  // If we checked recently, skip (unless debug/force?) 
-  // For now, adhering to user request "if i run sshbridge", but adding a small throttle 
-  // so it doesn't lag *too* much if they spam commands.
- /* if (lastCheck && now - lastCheck < UPDATE_CHECK_INTERVAL) {
-    return;
-  }*/ 
-  // Actually, user wants to see it. I'll make it always check but with a short timeout so it doesn't hang.
-  
   try {
     const { data } = await axios.get(`https://raw.githubusercontent.com/mrisvanv-cs/sshbridge-cli/main/package.json?t=${Date.now()}`, {
       timeout: 3000,
@@ -29,20 +21,27 @@ export async function checkForUpdate(currentVersion: string) {
 
     const latestVersion = data.version;
 
+    config.set('lastUpdateCheck', now);
+
     if (compareVersions(latestVersion, currentVersion) > 0) {
-      console.log();
-      console.log(chalk.yellow('************************************************'));
-      console.log(chalk.yellow(`*  New version available: ${chalk.green(latestVersion)} (current: ${currentVersion})  *`));
-      console.log(chalk.yellow(`*  Run the command below to update:            *`));
-      console.log(chalk.yellow(`*  ${chalk.cyan('sshbridge update')}                         *`));
-      console.log(chalk.yellow('************************************************'));
-      console.log();
+      return { latestVersion, currentVersion };
     }
     
-    config.set('lastUpdateCheck', now);
+    return null;
   } catch (error) {
     // Silently fail if offline or git is down
+    return null;
   }
+}
+
+export function showUpdateMessage(latestVersion: string, currentVersion: string) {
+  console.log();
+  console.log(chalk.yellow('************************************************'));
+  console.log(chalk.yellow(`*  New version available: ${chalk.green(latestVersion)} (current: ${currentVersion})  *`));
+  console.log(chalk.yellow(`*  Run the command below to update:            *`));
+  console.log(chalk.yellow(`*  ${chalk.cyan('sshbridge update')}                         *`));
+  console.log(chalk.yellow('************************************************'));
+  console.log();
 }
 
 function compareVersions(v1: string, v2: string): number {

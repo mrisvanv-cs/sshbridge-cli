@@ -11,13 +11,14 @@ import { downloadFile, uploadFile } from './commands/scp';
 import { update } from './commands/update';
 import { uninstall } from './commands/uninstall';
 
-import { checkForUpdate } from './utils/updateChecker';
+import { checkForUpdate, showUpdateMessage } from './utils/updateChecker';
 const pkg = require('../package.json'); // Using require for reliability with structure
 
-// Check for updates before any command
 (async () => {
+    // Check for updates before any command
+    let updateInfo: {latestVersion: string, currentVersion: string} | null = null;
     try {
-        await checkForUpdate(pkg.version);
+        updateInfo = await checkForUpdate(pkg.version);
     } catch (e) {
         // Silently ignore update check errors
     }
@@ -32,9 +33,9 @@ const pkg = require('../package.json'); // Using require for reliability with st
       .option('--with-prod', 'Include production servers')
       .action(async (options) => {
            if (options.ui) {
-               await startDashboard();
+               await startDashboard(updateInfo);
            } else {
-               await startWizard(options);
+               await startWizard(options, updateInfo);
            }
       });
 
@@ -62,13 +63,17 @@ const pkg = require('../package.json'); // Using require for reliability with st
       .description('List available servers')
       .option('--with-prod', 'Include production servers')
       .action((options, command) => {
+          if (updateInfo) showUpdateMessage(updateInfo.latestVersion, updateInfo.currentVersion);
           const mergedOptions = { ...command.parent.opts(), ...options };
           return list(mergedOptions);
       });
 
     program.command('connect <serverName>')
       .description('Connect to a server by name or ID')
-      .action((serverName) => connect(serverName));
+      .action((serverName) => {
+          if (updateInfo) showUpdateMessage(updateInfo.latestVersion, updateInfo.currentVersion);
+          return connect(serverName);
+      });
 
     program.command('download <serverName> <remotePath> [localPath]')
       .description('Download a file from the server')

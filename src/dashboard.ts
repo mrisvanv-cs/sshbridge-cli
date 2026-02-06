@@ -7,7 +7,7 @@ import { connectToServer } from './commands/connect';
 import { appConfig } from './api';
 import { showLoginForm } from './loginForm';
 
-export async function startDashboard() {
+export async function startDashboard(updateInfo: any = null) {
     // 1. Auth Check
     let token = appConfig.get('token');
     if (!token) {
@@ -86,6 +86,22 @@ export async function startDashboard() {
         }
     });
 
+    if (updateInfo) {
+        blessed.box({
+            parent: screen,
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: 1,
+            content: ` 🚀 NEW VERSION AVAILABLE: ${updateInfo.latestVersion} (Current: ${updateInfo.currentVersion}) | Run 'sshbridge update' to install! `,
+            style: {
+                bg: 'yellow',
+                fg: 'black',
+                bold: true
+            }
+        });
+    }
+
     // Styles - blue border by default, green when focused
     const listStyle = {
         selected: {
@@ -101,13 +117,15 @@ export async function startDashboard() {
         }
     };
 
+    const colHeight = updateInfo ? '100%-2' : '100%-1';
+
     // Columns
     const leftCol = blessed.list({
         parent: screen,
         top: 1,
         left: 0,
         width: '25%',
-        height: '100%-1',
+        height: colHeight,
         label: ' Dev Groups ',
         border: { type: 'line' },
         style: listStyle,
@@ -122,7 +140,7 @@ export async function startDashboard() {
         top: 1,
         left: '25%',
         width: '50%',
-        height: '100%-1',
+        height: colHeight,
         label: ' Servers ',
         border: { type: 'line' },
         style: listStyle,
@@ -137,7 +155,7 @@ export async function startDashboard() {
         top: 1,
         left: '75%',
         width: '25%',
-        height: '100%-1',
+        height: colHeight,
         label: ' Prod Groups ',
         border: { type: 'line' },
         style: listStyle,

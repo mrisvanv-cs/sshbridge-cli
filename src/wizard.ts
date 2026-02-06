@@ -6,12 +6,18 @@ import { appConfig } from './api';
 import { login } from './commands/auth';
 import { fetchServers } from './commands/list';
 import { connectToServer } from './commands/connect';
+import { showUpdateMessage } from './utils/updateChecker';
 
 // Register autocomplete prompt
 inquirer.registerPrompt('autocomplete', autocomplete);
 
-export async function startWizard(options: any = {}) {
+export async function startWizard(options: any = {}, updateInfo: any = null) {
     console.clear();
+    
+    if (updateInfo) {
+        showUpdateMessage(updateInfo.latestVersion, updateInfo.currentVersion);
+    }
+
     console.log(chalk.bold.magenta(`
    _____ _____ _    _ ____  _____  _____ _____   _____ ______ 
   / ____/ ____| |  | |  _ \\|  __ \\|_   _|  __ \\ / ____|  ____|
