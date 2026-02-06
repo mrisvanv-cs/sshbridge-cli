@@ -33,8 +33,11 @@ npm install
 npm run build
 
 echo "🔗 Installing globally to ~/.local..."
-# Using --prefix ~/.local to avoid sudo
-npm install -g . --prefix ~/.local
+# We use npm pack + install to ensure a copy is made, not a symlink to the temp folder
+VERSION=$(node -e "console.log(require('./package.json').version)")
+TARBALL="sshbridge-cli-${VERSION}.tgz"
+npm pack
+npm install -g "$TARBALL" --prefix ~/.local
 
 # Cleanup
 echo "🧹 Cleaning up..."
