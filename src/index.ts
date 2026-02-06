@@ -12,59 +12,60 @@ import { downloadFile, uploadFile } from './commands/scp';
 import { checkForUpdate } from './utils/updateChecker';
 const pkg = require('../package.json'); // Using require for reliability with structure
 
-const program = new Command();
-
-program.hook('preAction', async () => {
+// Check for updates before any command
+(async () => {
     try {
         await checkForUpdate(pkg.version);
     } catch (e) {
-        // ignore errors
+        // Silently ignore update check errors
     }
-});
 
-program
-  .name('sshbridge')
-  .description('CLI to connect to SSHBridge servers')
-  .version('1.0.0', '-v, --version')
-  .option('-u, --ui', 'Launch TUI dashboard mode')
-  .action(async (options) => {
-       if (options.ui) {
-           await startDashboard();
-       } else {
-           await startWizard();
-       }
-  });
+    const program = new Command();
 
-program.command('login')
-  .description('Login to SSHBridge')
-  .action(async () => { await login(); });
+    program
+      .name('sshbridge')
+      .description('CLI to connect to SSHBridge servers')
+      .version('1.0.0', '-v, --version')
+      .option('-u, --ui', 'Launch TUI dashboard mode')
+      .action(async (options) => {
+           if (options.ui) {
+               await startDashboard();
+           } else {
+               await startWizard();
+           }
+      });
 
-program.command('logout')
-  .description('Logout and clear stored credentials')
-  .action(logout);
+    program.command('login')
+      .description('Login to SSHBridge')
+      .action(async () => { await login(); });
 
-program.command('change-password')
-  .description('Change your password')
-  .action(async () => { await changePassword(); });
+    program.command('logout')
+      .description('Logout and clear stored credentials')
+      .action(logout);
 
-program.command('list')
-  .description('List available servers')
-  .action(list);
+    program.command('change-password')
+      .description('Change your password')
+      .action(async () => { await changePassword(); });
 
-program.command('connect <serverName>')
-  .description('Connect to a server by name or ID')
-  .action(connect);
+    program.command('list')
+      .description('List available servers')
+      .action(list);
 
-program.command('download <serverName> <remotePath> [localPath]')
-  .description('Download a file from the server')
-  .action(async (serverName, remotePath, localPath) => {
-      await downloadFile(serverName, remotePath, localPath);
-  });
+    program.command('connect <serverName>')
+      .description('Connect to a server by name or ID')
+      .action(connect);
 
-program.command('upload <serverName> <localPath> [remotePath]')
-  .description('Upload a file to the server')
-  .action(async (serverName, localPath, remotePath) => {
-      await uploadFile(serverName, localPath, remotePath);
-  });
+    program.command('download <serverName> <remotePath> [localPath]')
+      .description('Download a file from the server')
+      .action(async (serverName, remotePath, localPath) => {
+          await downloadFile(serverName, remotePath, localPath);
+      });
 
-program.parse(process.argv);
+    program.command('upload <serverName> <localPath> [remotePath]')
+      .description('Upload a file to the server')
+      .action(async (serverName, localPath, remotePath) => {
+          await uploadFile(serverName, localPath, remotePath);
+      });
+
+    await program.parseAsync(process.argv);
+})();
