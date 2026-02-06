@@ -19,7 +19,12 @@ export async function checkForUpdate(currentVersion: string) {
   
   try {
     const { data } = await axios.get(`https://raw.githubusercontent.com/mrisvanv-cs/sshbridge-cli/main/package.json?t=${Date.now()}`, {
-      timeout: 1500 // Don't wait too long
+      timeout: 3000,
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
     });
 
     const latestVersion = data.version;
@@ -28,8 +33,8 @@ export async function checkForUpdate(currentVersion: string) {
       console.log();
       console.log(chalk.yellow('************************************************'));
       console.log(chalk.yellow(`*  New version available: ${chalk.green(latestVersion)} (current: ${currentVersion})  *`));
-      console.log(chalk.yellow(`*  Run the install script again to update:     *`));
-      console.log(chalk.yellow(`*  ${chalk.cyan('curl ... | bash')}                         *`));
+      console.log(chalk.yellow(`*  Run the command below to update:            *`));
+      console.log(chalk.yellow(`*  ${chalk.cyan('sshbridge update')}                         *`));
       console.log(chalk.yellow('************************************************'));
       console.log();
     }

@@ -8,7 +8,12 @@ export async function update() {
     
     try {
         const { data } = await axios.get(`https://raw.githubusercontent.com/mrisvanv-cs/sshbridge-cli/main/package.json?t=${Date.now()}`, {
-            timeout: 5000
+            timeout: 5000,
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            }
         });
 
         const latestVersion = data.version;

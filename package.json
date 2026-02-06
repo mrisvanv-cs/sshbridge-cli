@@ -1,6 +1,6 @@
 {
   "name": "sshbridge-cli",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A terminal-based SSH connection manager with a beautiful TUI interface",
   "main": "dist/index.js",
   "bin": {
