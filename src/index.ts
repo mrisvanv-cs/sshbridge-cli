@@ -14,7 +14,7 @@ const program = new Command();
 program
   .name('sshbridge')
   .description('CLI to connect to SSHBridge servers')
-  .version('1.0.0')
+  .version('1.0.0', '-v, --version')
   .option('-u, --ui', 'Launch TUI dashboard mode')
   .action(async (options) => {
        if (options.ui) {
