@@ -32,7 +32,7 @@ export async function connectToServer(server: any, role: string = 'user') {
         }]);
 
         if (confirmation !== `confirm ${server.name}`) {
-            console.log(chalk.red('❌ conformation failed. Connection aborted.'));
+            console.log(chalk.red('❌ confirmation failed. Connection aborted.'));
             return;
         }
     }

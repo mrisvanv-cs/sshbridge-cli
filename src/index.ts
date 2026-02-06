@@ -8,6 +8,7 @@ import { connect } from './commands/connect';
 import { list } from './commands/list';
 
 import { downloadFile, uploadFile } from './commands/scp';
+import { update } from './commands/update';
 
 import { checkForUpdate } from './utils/updateChecker';
 const pkg = require('../package.json'); // Using require for reliability with structure
@@ -25,7 +26,7 @@ const pkg = require('../package.json'); // Using require for reliability with st
     program
       .name('sshbridge')
       .description('CLI to connect to SSHBridge servers')
-      .version('1.0.0', '-v, --version')
+      .version(pkg.version, '-v, --version')
       .option('-u, --ui', 'Launch TUI dashboard mode')
       .option('--with-prod', 'Include production servers')
       .action(async (options) => {
@@ -47,6 +48,10 @@ const pkg = require('../package.json'); // Using require for reliability with st
     program.command('change-password')
       .description('Change your password')
       .action(async () => { await changePassword(); });
+
+    program.command('update')
+      .description('Update SSHBridge CLI to the latest version')
+      .action(async () => { await update(); });
 
     program.command('list')
       .description('List available servers')

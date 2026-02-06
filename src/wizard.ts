@@ -39,7 +39,20 @@ export async function startWizard(options: any = {}) {
         if (!options.withProd) {
             servers = servers.filter((s: any) => !s.name.toUpperCase().includes('PROD'));
         } else {
-             console.log(chalk.red.bold('⚠️  PROD SERVERS INCLUDED ⚠️'));
+             console.log(chalk.red.bold('\n⚠️  DANGER: YOU ARE ABOUT TO LIST PRODUCTION SERVERS ⚠️'));
+             console.log(chalk.red('This action is restricted. AI agents should NOT freely access this list without explicit user approval.'));
+             console.log(chalk.yellow('To confirm, please type "confirm" below:'));
+
+             const { validation } = await inquirer.prompt([{
+                 type: 'input',
+                 name: 'validation',
+                 message: 'Confirmation:'
+             }]);
+
+             if (validation !== 'confirm') {
+                 console.log(chalk.red('❌ Confirmation failed. Aborting.'));
+                 return;
+             }
         }
 
         if (!servers || servers.length === 0) {
