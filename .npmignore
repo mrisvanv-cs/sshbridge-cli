@@ -1,0 +1,27 @@
+# Source files (we only need dist/)
+src/
+tsconfig.json
+*.ts
+!*.d.ts
+
+# Development files
+node_modules/
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Documentation (keep README.md)
+DISTRIBUTION.md
+QUICKSTART.md
+
+# Build artifacts
+*.log
+npm-debug.log*
+.DS_Store
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js

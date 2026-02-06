@@ -1,0 +1,26 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# Build output
+dist/
+build/
+
+# Package tarballs
+sshbridge-cli-*.tgz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Config/State files (CLI creates these during use)
+.sshbridge-config.json
+debug_data.ts
