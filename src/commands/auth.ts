@@ -6,40 +6,71 @@ import axios from 'axios';
 export async function login(): Promise<boolean> {
     console.log(chalk.blue('SSHBridge Authentication'));
 
-    const credentials = await inquirer.prompt([
-        {
-            type: 'input',
-            name: 'username',
-            message: 'Username:'
-        },
-        {
-            type: 'password',
-            name: 'password',
-            message: 'Password:'
-        }
-    ]);
+    const cachedUsername = appConfig.get('username') as string;
+    const cachedPassword = appConfig.get('password') as string;
+
+    let credentials: { username?: string; password?: string } = {};
+    let usingCached = false;
+
+    if (cachedUsername && cachedPassword) {
+        credentials = { username: cachedUsername, password: cachedPassword };
+        usingCached = true;
+        console.log(chalk.cyan(`Using cached credentials for ${cachedUsername}...`));
+    } else {
+        credentials = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'username',
+                message: 'Username:'
+            },
+            {
+                type: 'password',
+                name: 'password',
+                message: 'Password:'
+            }
+        ]);
+    }
+
+    let usernamePasswordCorrect = false;
 
     try {
         // Initial Login Attempt
         let response;
         try {
-            response = await api.post('/api/auth/login', credentials);
+            response = await api.post('/api/auth/login', {
+                username: credentials.username?.trim(),
+                password: credentials.password?.trim()
+            });
         } catch (error: any) {
             if (axios.isAxiosError(error) && error.response?.status === 401 && error.response.data.mfaRequired) {
+                usernamePasswordCorrect = true;
                 console.log(chalk.yellow('MFA Required'));
-                const mfa = await inquirer.prompt([
-                    {
-                        type: 'input',
-                        name: 'code',
-                        message: 'Enter MFA Code:'
-                    }
-                ]);
 
-                // Retry with MFA Token
-                response = await api.post('/api/auth/login', {
-                    ...credentials,
-                    mfaToken: mfa.code
-                });
+                while (true) {
+                    const mfa = await inquirer.prompt([
+                        {
+                            type: 'input',
+                            name: 'code',
+                            message: 'Enter MFA Code:'
+                        }
+                    ]);
+
+                    try {
+                        response = await api.post('/api/auth/login', {
+                            username: credentials.username?.trim(),
+                            password: credentials.password?.trim(),
+                            mfaToken: mfa.code?.trim()
+                        });
+                        break;
+                    } catch (mfaError: any) {
+                        if (axios.isAxiosError(mfaError) && mfaError.response?.status === 401) {
+                            console.log(chalk.red('Invalid MFA Code. Please try again.'));
+                            continue;
+                        } else {
+                            throw mfaError;
+                        }
+                    }
+                }
             } else {
                 throw error;
             }
@@ -49,7 +80,8 @@ export async function login(): Promise<boolean> {
 
         if (token) {
             appConfig.set('token', token);
-            appConfig.set('username', credentials.username);
+            appConfig.set('username', credentials.username?.trim());
+            appConfig.set('password', credentials.password?.trim());
             console.log(chalk.green('Login Successful!'));
             return true;
         } else {
@@ -58,6 +90,13 @@ export async function login(): Promise<boolean> {
         }
 
     } catch (error: any) {
+        if (usingCached && !usernamePasswordCorrect) {
+            console.log(chalk.yellow('Cached credentials failed. Please login with your username and password.'));
+            appConfig.delete('username');
+            appConfig.delete('password');
+            appConfig.delete('token');
+            return await login();
+        }
         if (axios.isAxiosError(error)) {
              console.error(chalk.red(`Login Failed: ${error.response?.data?.message || error.message}`));
         } else {
@@ -69,6 +108,8 @@ export async function login(): Promise<boolean> {
 
 export function logout() {
     appConfig.delete('token');
+    appConfig.delete('username');
+    appConfig.delete('password');
     console.log(chalk.green('Logged out successfully.'));
 }
 
@@ -180,6 +221,7 @@ export async function verifyPassword(): Promise<boolean> {
 
         if (response.data.token) {
             appConfig.set('token', response.data.token);
+            appConfig.set('password', password);
             return true;
         }
         return false;

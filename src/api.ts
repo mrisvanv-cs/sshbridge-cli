@@ -13,6 +13,14 @@ const config = new Conf({
         token: {
             type: 'string',
             default: ''
+        },
+        username: {
+            type: 'string',
+            default: ''
+        },
+        password: {
+            type: 'string',
+            default: ''
         }
     }
 });

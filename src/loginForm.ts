@@ -3,6 +3,38 @@ import chalk from 'chalk';
 import { api, appConfig } from './api';
 
 export async function showLoginForm(): Promise<boolean> {
+    const cachedUsername = appConfig.get('username') || '';
+    const cachedPassword = appConfig.get('password') || '';
+
+    let initialMfaRequired = false;
+
+    if (cachedUsername && cachedPassword) {
+        try {
+            // Attempt login without MFA first in the background
+            const response = await api.post('/api/auth/login', {
+                username: (cachedUsername as string).trim(),
+                password: (cachedPassword as string).trim()
+            });
+
+            if (response.data && response.data.token) {
+                appConfig.set('token', response.data.token);
+                appConfig.set('username', (cachedUsername as string).trim());
+                appConfig.set('password', (cachedPassword as string).trim());
+                return true;
+            }
+        } catch (error: any) {
+            if (error.response?.status === 401 && error.response?.data?.mfaRequired) {
+                // MFA is required. We will show the login form but prefilled and focused on MFA.
+                initialMfaRequired = true;
+            } else {
+                // Other error (e.g., password changed). Clear cache so they must re-enter.
+                appConfig.delete('username');
+                appConfig.delete('password');
+                appConfig.delete('token');
+            }
+        }
+    }
+
     return new Promise((resolve) => {
         const screen = blessed.screen({
             smartCSR: true,
@@ -178,6 +210,8 @@ export async function showLoginForm(): Promise<boolean> {
             statusMsg.setContent(chalk.yellow('Authenticating...'));
             screen.render();
 
+            let usernamePasswordCorrect = false;
+
             try {
                 // Initial login attempt
                 let response;
@@ -189,6 +223,7 @@ export async function showLoginForm(): Promise<boolean> {
                 } catch (error: any) {
                     // Check if MFA is required
                     if (error.response?.status === 401 && error.response?.data?.mfaRequired) {
+                        usernamePasswordCorrect = true;
                         // If MFA code was already entered, use it
                         if (mfaCode.trim()) {
                             response = await api.post('/api/auth/login', {
@@ -211,6 +246,7 @@ export async function showLoginForm(): Promise<boolean> {
                 if (response.data && response.data.token) {
                     appConfig.set('token', response.data.token);
                     appConfig.set('username', username.trim());
+                    appConfig.set('password', password.trim());
                     screen.destroy();
                     resolve(true);
                 } else {
@@ -218,9 +254,17 @@ export async function showLoginForm(): Promise<boolean> {
                     screen.render();
                 }
             } catch (error: any) {
+                if (!usernamePasswordCorrect) {
+                    appConfig.delete('username');
+                    appConfig.delete('password');
+                    appConfig.delete('token');
+                }
                 const errorMsg = error.response?.data?.message || error.message || 'Login failed';
                 statusMsg.setContent(chalk.red(`Error: ${errorMsg}`));
                 screen.render();
+                if (usernamePasswordCorrect) {
+                    mfaInput.focus();
+                }
             }
         };
 
@@ -263,7 +307,14 @@ export async function showLoginForm(): Promise<boolean> {
         screen.key(['escape', 'C-c'], handleCancel);
 
         // Focus first input and activate it
-        usernameInput.focus();
+        if (initialMfaRequired) {
+            usernameInput.setValue(cachedUsername as string);
+            passwordInput.setValue(cachedPassword as string);
+            mfaInput.focus();
+            statusMsg.setContent(chalk.yellow('MFA Required - Please enter MFA code above'));
+        } else {
+            usernameInput.focus();
+        }
         screen.render();
     });
 }
